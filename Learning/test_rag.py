@@ -1,4 +1,3 @@
-import chromadb
 from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
@@ -12,6 +11,10 @@ sentences =[
 embeddings = model.encode(sentences)
 
 print(embeddings.shape)
+
+# ChromaDB
+
+import chromadb
 
 chroma_client = chromadb.Client()
 

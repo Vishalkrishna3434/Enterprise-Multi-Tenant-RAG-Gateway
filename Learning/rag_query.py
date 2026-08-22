@@ -1,6 +1,6 @@
 from rank_bm25 import BM25Okapi
-from rag_ingestion import collection, all_child_docs,model
-from rag_hybrid_search import hybrid_search_with_rrf
+from ..scripts.rag_ingestion import collection, all_child_docs,model
+from ..scripts.rag_hybrid_search import hybrid_search_with_rrf
 
 tokenized_corpus = [doc.page_content.lower().split(" ") for doc in all_child_docs]
 bm25 = BM25Okapi(tokenized_corpus)

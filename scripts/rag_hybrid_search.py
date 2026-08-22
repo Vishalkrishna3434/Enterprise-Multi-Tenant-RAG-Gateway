@@ -1,5 +1,9 @@
+from rank_bm25 import BM25Okapi
 from collections import defaultdict
-from rag_ingestion import model 
+from scripts.rag_ingestion import model,all_child_docs
+
+tokenized_corpus = [doc.page_content.lower().split(" ") for doc in all_child_docs]
+bm25 = BM25Okapi(tokenized_corpus)
 
 def hybrid_search_with_rrf(query,collection,bm25_engine,all_child_docs,top_k=3,k_constant=60):
     
