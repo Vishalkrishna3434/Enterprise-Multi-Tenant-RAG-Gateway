@@ -1,7 +1,5 @@
 from collections import defaultdict
-from sentence_transformers import SentenceTransformer
-
-model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+from rag_ingestion import model 
 
 def hybrid_search_with_rrf(query,collection,bm25_engine,all_child_docs,top_k=3,k_constant=60):
     
@@ -33,16 +31,7 @@ def hybrid_search_with_rrf(query,collection,bm25_engine,all_child_docs,top_k=3,k
     
     top_indices = final_sorted_indices[:top_k]
     return [all_child_docs[i] for i in top_indices]
-  
-query_text = "What is the multi-tenant architecture?"
-results = hybrid_search_with_rrf(query_text, collection, bm25, all_child_docs, top_k=2)
 
-print(f"Top Hybrid Search Result for query: '{query_text}'")
-print("-" * 50)
-for idx,res in enumerate(results):
-    print(f"Result {idx+1} Parent ID:{res.metadata['parent_id']}")
-    print(res.page_content)
-    print("-"*50)
     
     
     
