@@ -40,5 +40,5 @@ async def ask_query(request : QuestionRequest):
     }
 
   except Exception as e:
-    traceback.print_exec()
+    traceback.print_exc()
     raise HTTPException(status_code=500,detail=str(e))
