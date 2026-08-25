@@ -2,60 +2,59 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-sample_file_path = "./sample.txt"
+def ingest_document(file_path:str):
+  with open(file_path,"r") as f:
+      raw_text = f.read()
+      
+  # 1. Parent-child Chunking
+  parent_splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
 
-with open(sample_file_path,"r") as f:
-     raw_text = f.read()
-     
-# 1. Parent-child Chunking
-parent_splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
+  child_splitter = RecursiveCharacterTextSplitter(chunk_size=300,chunk_overlap=50)
 
-child_splitter = RecursiveCharacterTextSplitter(chunk_size=300,chunk_overlap=50)
+  parent_docs = parent_splitter.create_documents([raw_text])
 
-parent_docs = parent_splitter.create_documents([raw_text])
+  all_child_docs = []
+  parent_store = {} 
 
-all_child_docs = []
-parent_store = {} 
+  for parent_id,parent_doc in enumerate(parent_docs):
+      parent_store[parent_id] = parent_doc.page_content
+      child_docs = child_splitter.create_documents([parent_doc.page_content])
+      
+      for child in child_docs:
+        child.metadata = {"parent_id":parent_id,"document":file_path}
+        all_child_docs.append(child)
 
-for parent_id,parent_doc in enumerate(parent_docs):
-    parent_store[parent_id] = parent_doc.page_content
-    child_docs = child_splitter.create_documents([parent_doc.page_content])
-    
-    for child in child_docs:
-       child.metadata = {"parent_id":parent_id,"document":sample_file_path}
-       all_child_docs.append(child)
+  # 2. Generate embeddings
 
-# 2. Generate embeddings
+  model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+  texts = [child.page_content for child in all_child_docs]
+  child_embeddings = model.encode(texts).tolist()
+  #Alternate way
+  """
+  all_embeddings = []
 
-texts = [child.page_content for child in all_child_docs]
-child_embeddings = model.encode(texts)
-#Alternate way
-"""
-all_embeddings = []
+  for child in all_child_docs:
+      embeddings_child = model.encode(child.page_content)
+      all_embeddings.append(embeddings_child)
+      
+  """
 
-for child in all_child_docs:
-    embeddings_child = model.encode(child.page_content)
-    all_embeddings.append(embeddings_child)
-    
-"""
+  # 3. Store into Chromadb 
 
-# 3. Store into Chromadb 
+  client = chromadb.PersistentClient(path="./chroma_db")
+  collection = client.get_or_create_collection(name="enterprise_rag_children")
 
-client = chromadb.PersistentClient(path="./chroma_db")
-collection = client.get_or_create_collection(name="enterprise_rag_children")
+  ids = [f"child_{i}" for i in range(len(all_child_docs))]
+  documents = [child.page_content for child in all_child_docs]
+  metadatas = [child.metadata for child in all_child_docs]
 
-ids = [f"child_{i}" for i in range(len(all_child_docs))]
-documents = [child.page_content for child in all_child_docs]
-metadatas = [child.metadata for child in all_child_docs]
+  collection.add(
+    embeddings=child_embeddings,
+    documents=documents,
+    ids=ids,
+    metadatas=metadatas
+  )
 
-collection.add(
-  embeddings=child_embeddings,
-  documents=documents,
-  ids=ids,
-  metadatas=metadatas
-)
-
-print(f"Successfully Stored {collection.count()} child chunks in ChromaDB")
+  print(f"Successfully Stored {collection.count()} child chunks in ChromaDB")
 
