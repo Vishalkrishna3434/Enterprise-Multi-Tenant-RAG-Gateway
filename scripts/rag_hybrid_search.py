@@ -10,7 +10,7 @@ def create_bm25_index(all_child_docs):
   
   return BM25Okapi(tokenized_corpus)
 
-def hybrid_search_with_rrf(query,collection,bm25_engine,all_child_docs,top_k=3,k_constant=60):
+def hybrid_search_with_rrf(query,collection,bm25_engine,all_child_docs,top_k=10,k_constant=60):
     print("Number of child docs:", len(all_child_docs))
     print("BM25 engine:", bm25_engine)
     if bm25_engine is None or not all_child_docs: 

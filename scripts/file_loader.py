@@ -10,7 +10,7 @@ def load_document (file_path:str)->str:
     elif ext==".pdf":
       from pypdf import PdfReader
       reader = PdfReader(file_path)
-      return "\n".join(page.extract_text() for page in reader.pages)
+      return "\n".join(page.extract_text() or "" for page in reader.pages)
     
     elif ext==".docx":
       from docx import Document as DocxDocument
