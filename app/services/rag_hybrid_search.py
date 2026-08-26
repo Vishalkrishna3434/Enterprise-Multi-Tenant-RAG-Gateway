@@ -1,6 +1,15 @@
 from rank_bm25 import BM25Okapi
 from collections import defaultdict
-from scripts.rag_ingestion import model,all_child_docs
+from app.services.rag_ingestion import model,all_child_docs
+
+bm25 = None
+
+def set_bm25_index(index):
+    global bm25
+    bm25 = index
+
+def get_bm25_index():
+    return bm25
 
 def create_bm25_index(all_child_docs):
   tokenized_corpus = [doc.page_content.lower().split(" ") for doc in all_child_docs]

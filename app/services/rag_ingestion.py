@@ -1,7 +1,7 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from scripts.file_loader import load_document
+from app.services.file_loader import load_document
 
 client = chromadb.PersistentClient(path="./chroma_db")
 
