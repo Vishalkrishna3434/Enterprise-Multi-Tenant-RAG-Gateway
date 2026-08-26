@@ -5,6 +5,7 @@ venv/
 
 # Local Vector Databases & Runtime Data
 chroma_db/
+uploads/
 
 # Environment Variables & Secrets
 .env

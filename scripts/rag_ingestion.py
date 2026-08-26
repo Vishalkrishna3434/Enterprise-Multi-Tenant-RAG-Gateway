@@ -1,11 +1,20 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from scripts.file_loader import load_document
+
+client = chromadb.PersistentClient(path="./chroma_db")
+
+model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+collection = client.get_or_create_collection(name="enterprise_rag_children")
+
+all_child_docs = []
+parent_store = {} 
 
 def ingest_document(file_path:str):
-  with open(file_path,"r") as f:
-      raw_text = f.read()
-      
+  raw_text = load_document(file_path)
+ 
   # 1. Parent-child Chunking
   parent_splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
 
@@ -13,8 +22,6 @@ def ingest_document(file_path:str):
 
   parent_docs = parent_splitter.create_documents([raw_text])
 
-  all_child_docs = []
-  parent_store = {} 
 
   for parent_id,parent_doc in enumerate(parent_docs):
       parent_store[parent_id] = parent_doc.page_content
@@ -26,7 +33,6 @@ def ingest_document(file_path:str):
 
   # 2. Generate embeddings
 
-  model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
   texts = [child.page_content for child in all_child_docs]
   child_embeddings = model.encode(texts).tolist()
@@ -42,8 +48,6 @@ def ingest_document(file_path:str):
 
   # 3. Store into Chromadb 
 
-  client = chromadb.PersistentClient(path="./chroma_db")
-  collection = client.get_or_create_collection(name="enterprise_rag_children")
 
   ids = [f"child_{i}" for i in range(len(all_child_docs))]
   documents = [child.page_content for child in all_child_docs]
