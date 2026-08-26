@@ -20,8 +20,7 @@ def get_parent_store():
 
 def ingest_document(file_path:str):
   raw_text = load_document(file_path)
-  # temporarily, inside ingest_document(), right after raw_text = load_document(file_path)
-  print(f"Extracted {len(raw_text)} characters from {file_path}")
+  
   # 1. Parent-child Chunking
   parent_splitter = RecursiveCharacterTextSplitter(chunk_size=1000,chunk_overlap=200)
 
