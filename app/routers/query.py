@@ -1,5 +1,6 @@
-from fastapi import APIRouter,HTTPException
-from app.services.rag_hybrid_search import hybrid_search_with_rrf,get_bm25_index
+import asyncio
+from fastapi import APIRouter,HTTPException,Request
+from app.services.rag_hybrid_search import hybrid_search_with_rrf
 from app.services.rag_generation import generate_answer
 from app.services.rag_reranker import rerank
 from app.schemas.requests import QuestionRequest
@@ -9,11 +10,11 @@ import traceback
 router = APIRouter()
     
 @router.post("/api/v1/query")
-async def ask_query(request : QuestionRequest):
+async def ask_query(request : Request,payload:QuestionRequest):
   try:
-    query = request.query 
+    query = payload.query 
     
-    bm25_index = get_bm25_index
+    bm25_index = request.app.state.bm25_index
     if bm25_index is None:
         raise HTTPException(
             status_code=400,
@@ -21,8 +22,8 @@ async def ask_query(request : QuestionRequest):
         )
     
     # Hybrid retrieval: BM25 + semantic search + RRF
-    candidates = hybrid_search_with_rrf(query, collection, get_bm25_index(),get_all_child_docs(), top_k=10)
-    results = rerank(query,candidates,top_k=2)
+    candidates = await asyncio.to_thread(hybrid_search_with_rrf,query, collection, bm25_index ,get_all_child_docs(), top_k=10)
+    results = await asyncio.to_thread(rerank,query,candidates,top_k=2)
     
     response_results = []
     parent_ids_seen = set()
@@ -45,7 +46,10 @@ async def ask_query(request : QuestionRequest):
       "results" : response_results,
       "answer" : answer 
     }
-
+  
+  except HTTPException :
+    raise
+  
   except Exception as e:
     traceback.print_exc()
     raise HTTPException(status_code=500,detail=str(e))
