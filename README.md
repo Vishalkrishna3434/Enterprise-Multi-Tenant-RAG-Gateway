@@ -1,3 +1,4 @@
+````md
 # Enterprise Multi-Tenant RAG Gateway
 
 A backend-focused **Retrieval-Augmented Generation (RAG)** system built with **FastAPI**. The project uses a multi-stage retrieval pipeline to improve document search and context selection before generating answers with an LLM.
@@ -13,9 +14,9 @@ The system processes documents into searchable representations and uses multiple
 ```text
 Documents
     ↓
-Validation
+File Validation
     ↓
-Extraction
+Text Extraction
     ↓
 Parent-Child Chunking
     ↓
@@ -27,6 +28,8 @@ Vector Storage
 User Query
     ↓
 Guardrails
+    ↓
+Hybrid Retrieval
     ↓
 Vector Search + BM25
     ↓
@@ -40,6 +43,18 @@ LLM Generation
     ↓
 Response
 ````
+
+The core approach is:
+
+```text
+Retrieve Broadly
+      ↓
+Combine Multiple Signals
+      ↓
+Rank More Precisely
+      ↓
+Generate Using Relevant Context
+```
 
 ---
 
@@ -96,8 +111,8 @@ Response
 
 The system has two primary pipelines:
 
-* **Ingestion Pipeline:** Processes documents and stores searchable representations.
-* **Query Pipeline:** Retrieves, ranks, selects relevant context, and generates responses.
+* **Ingestion Pipeline:** Validates, processes, chunks, embeds, and stores documents.
+* **Query Pipeline:** Retrieves candidates, combines retrieval signals, reranks results, selects context, and generates a response.
 
 ---
 
@@ -165,11 +180,11 @@ Query
         Fusion
 ```
 
-Using multiple retrieval methods reduces dependence on a single search strategy.
+Using multiple retrieval methods reduces dependence on a single retrieval strategy.
 
 ### Reciprocal Rank Fusion
 
-Vector search and BM25 produce different scoring systems. RRF combines their rankings instead of directly comparing incompatible scores.
+Vector search and BM25 produce different score ranges. RRF combines their rankings instead of directly comparing incompatible scores.
 
 ```text
 Vector Ranking + BM25 Ranking
@@ -181,7 +196,7 @@ Vector Ranking + BM25 Ranking
 
 ### Cross-Encoder Reranking
 
-Fast retrieval finds a set of candidate chunks first. A more expensive cross-encoder then reranks only those candidates.
+Fast retrieval finds candidate chunks first. A more expensive cross-encoder then reranks only the top candidates.
 
 ```text
 Large Corpus
@@ -193,7 +208,7 @@ Top Candidates
 Cross-Encoder Reranking
 ```
 
-This balances retrieval speed and ranking quality.
+This improves ranking precision while avoiding the cost of applying the cross-encoder to the entire corpus.
 
 ### Guardrails and Validation
 
@@ -241,7 +256,7 @@ Vector Database
 LLM
 ```
 
-This project uses a multi-stage approach:
+This project treats retrieval as a sequence of stages:
 
 ```text
 Multiple Retrieval Methods
@@ -255,23 +270,29 @@ Context Selection
 LLM
 ```
 
-The retrieval process is treated as a sequence of stages where cheaper retrieval methods find candidates and more expensive ranking methods refine the results.
+Cheaper retrieval methods first identify a broader candidate set, while more expensive ranking methods are applied to a smaller set of potentially relevant results.
 
 ---
 
-## Future Improvements
+## Tradeoffs
 
-* Multi-tenant isolation
-* Authentication and authorization
-* Tenant-scoped document retrieval
-* Background document ingestion
-* Observability and tracing
-* Retrieval evaluation and benchmarking
-* Production deployment and reliability improvements
+### Hybrid Retrieval
 
-### Evaluation
+Combining vector search and BM25 improves retrieval robustness but adds additional retrieval and fusion complexity.
 
-Different retrieval strategies can be compared:
+### Cross-Encoder Reranking
+
+Reranking can improve ranking precision but adds inference latency and computational cost. It is therefore applied only to a limited set of retrieved candidates.
+
+### Parent-Child Chunking
+
+Parent-child chunking balances retrieval precision and context quality but requires maintaining relationships between child chunks and their parent context.
+
+---
+
+## Evaluation
+
+Retrieval approaches can be compared to measure whether additional complexity improves results.
 
 ```text
 Vector Search
@@ -287,7 +308,22 @@ Possible evaluation metrics include:
 * Precision@K
 * MRR
 * NDCG
-* Latency
+* Retrieval latency
+* End-to-end response latency
+
+The goal is to measure whether each additional retrieval stage provides meaningful improvements rather than assuming that a more complex pipeline automatically produces better results.
+
+---
+
+## Future Improvements
+
+* Multi-tenant isolation
+* Authentication and authorization
+* Tenant-scoped document retrieval
+* Background document ingestion
+* Observability and tracing
+* Retrieval evaluation and benchmarking
+* Production deployment and reliability improvements
 
 ---
 
