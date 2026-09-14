@@ -1,47 +1,28 @@
-Enterprise Multi-Tenant RAG Gateway
+# Enterprise Multi-Tenant RAG Gateway
 
-A backend-focused Retrieval-Augmented Generation (RAG) system built with FastAPI. The project uses a multi-stage retrieval pipeline to improve document search and context selection before generating answers with an LLM.
+A backend-focused **Retrieval-Augmented Generation (RAG)** system built with **FastAPI**. The project uses a multi-stage retrieval pipeline to improve document search and context selection before generating answers with an LLM.
 
-Status: Under active development.
+> **Status:** Under active development.
 
-WHAT IT DOES
+---
 
-The system processes documents into searchable representations and uses multiple retrieval and ranking stages to find relevant context for LLM generation.
+## Overview
 
+The system processes documents into searchable representations and uses multiple retrieval and ranking stages to find relevant context before generating an answer.
+
+```text
 Documents
     ↓
 Validation
     ↓
 Extraction
     ↓
-Chunking
+Parent-Child Chunking
     ↓
 Embeddings
     ↓
-Storage
+Vector Storage
 
-
-User Query
-    ↓
-Guardrails
-    ↓
-Vector Search + BM25
-    ↓
-Reciprocal Rank Fusion
-    ↓
-Cross-Encoder Reranking
-    ↓
-Context Selection
-    ↓
-LLM Generation
-    ↓
-Response
-
-
-```text
-Documents
-    ↓
-Validation → Extraction → Chunking → Embeddings → Storage
 
 User Query
     ↓
@@ -79,14 +60,15 @@ Response
                      │                                 │
                      ▼                                 ▼
             ┌─────────────────┐               ┌─────────────────┐
-            │    Ingestion    │               │   Query Pipeline │
+            │    Ingestion    │               │  Query Pipeline │
+            │    Pipeline     │               │                 │
             └────────┬────────┘               └────────┬────────┘
                      │                                 │
                      ▼                                 ▼
-             File Validation                       Guardrails
+              File Validation                      Guardrails
                      │                                 │
                      ▼                                 ▼
-              Text Extraction                     User Query
+              Text Extraction                    User Query
                      │                                 │
                      ▼                                 ▼
            Parent-Child Chunking            Hybrid Retrieval
@@ -111,6 +93,11 @@ Response
                                                     ▼
                                                  Response
 ```
+
+The system has two primary pipelines:
+
+* **Ingestion Pipeline:** Processes documents and stores searchable representations.
+* **Query Pipeline:** Retrieves, ranks, selects relevant context, and generates responses.
 
 ---
 
@@ -143,41 +130,58 @@ Request → Router → Service → RAG Components
 The application separates responsibilities:
 
 ```text
-Routers  → HTTP handling
-Schemas  → Data validation
-Services → RAG and business logic
+Routers
+    → HTTP handling
+
+Schemas
+    → Data validation
+
+Services
+    → RAG and business logic
 ```
 
-This makes individual components easier to test, modify, and replace independently.
+This separation makes components easier to test, modify, and replace independently.
 
 ### Parent-Child Chunking
 
-Small chunks improve retrieval precision but may lose surrounding context. Parent-child chunking retrieves smaller, precise chunks while preserving access to larger surrounding context.
+Small chunks improve retrieval precision but can lose surrounding context. Parent-child chunking retrieves precise child chunks while preserving access to larger parent context.
 
 ### Hybrid Retrieval
 
-The system combines semantic and keyword retrieval:
+The system combines semantic and keyword-based retrieval.
 
 ```text
 Query
   │
-  ├── Vector Search → Semantic Matches
+  ├── Vector Search
+  │       ↓
+  │   Semantic Matches
   │
-  └── BM25 Search   → Keyword Matches
-             │
-             ▼
-          Fusion
+  └── BM25 Search
+          ↓
+      Keyword Matches
+          │
+          ▼
+        Fusion
 ```
 
-This reduces dependence on a single retrieval strategy.
+Using multiple retrieval methods reduces dependence on a single search strategy.
 
 ### Reciprocal Rank Fusion
 
-Vector search and BM25 produce different score ranges. RRF combines their rankings instead of directly comparing incompatible scores.
+Vector search and BM25 produce different scoring systems. RRF combines their rankings instead of directly comparing incompatible scores.
+
+```text
+Vector Ranking + BM25 Ranking
+              ↓
+             RRF
+              ↓
+      Combined Results
+```
 
 ### Cross-Encoder Reranking
 
-Fast retrieval finds candidate documents first. A more expensive cross-encoder then reranks only the top candidates.
+Fast retrieval finds a set of candidate chunks first. A more expensive cross-encoder then reranks only those candidates.
 
 ```text
 Large Corpus
@@ -200,36 +204,44 @@ Request
    ↓
 Validation / Guardrails
    ├── Invalid → Reject
-   └── Valid → RAG Pipeline
+   └── Valid
+          ↓
+      RAG Pipeline
 ```
 
 ### Async Generation
 
-LLM API calls are I/O-bound. Async handling helps the backend handle concurrent requests efficiently while waiting for external services.
+LLM API calls are primarily I/O-bound. Async handling allows the backend to handle other requests while waiting for external model services.
 
 ---
 
 ## API Endpoints
 
-| Method   | Endpoint                   | Description                                                      |
-| -------- | -------------------------- | ---------------------------------------------------------------- |
-| `GET`    | `/health`                  | Checks whether the API is running and healthy.                   |
-| `POST`   | `/documents/upload`        | Uploads and processes a document for retrieval.                  |
-| `POST`   | `/query`                   | Runs the RAG retrieval and generation pipeline for a user query. |
-| `GET`    | `/documents`               | Retrieves document metadata.                                     |
-| `DELETE` | `/documents/{document_id}` | Deletes a document and its associated data.                      |
+| Method   | Endpoint                   | Description                                                  |
+| -------- | -------------------------- | ------------------------------------------------------------ |
+| `GET`    | `/health`                  | Checks whether the API is running and healthy.               |
+| `POST`   | `/documents/upload`        | Uploads and processes a document for retrieval.              |
+| `POST`   | `/query`                   | Runs the retrieval and generation pipeline for a user query. |
+| `GET`    | `/documents`               | Retrieves document metadata.                                 |
+| `DELETE` | `/documents/{document_id}` | Deletes a document and its associated data.                  |
 
 ---
 
 ## Why Multi-Stage Retrieval?
 
-A basic RAG system often looks like:
+A basic RAG system often follows:
 
 ```text
-Document → Embedding → Vector Database → LLM
+Document
+    ↓
+Embedding
+    ↓
+Vector Database
+    ↓
+LLM
 ```
 
-This project uses:
+This project uses a multi-stage approach:
 
 ```text
 Multiple Retrieval Methods
@@ -243,13 +255,13 @@ Context Selection
 LLM
 ```
 
-> **Retrieval is treated as a multi-stage process rather than a single search operation.**
+The retrieval process is treated as a sequence of stages where cheaper retrieval methods find candidates and more expensive ranking methods refine the results.
 
 ---
 
 ## Future Improvements
 
-* Real multi-tenant isolation
+* Multi-tenant isolation
 * Authentication and authorization
 * Tenant-scoped document retrieval
 * Background document ingestion
@@ -259,17 +271,17 @@ LLM
 
 ### Evaluation
 
-Retrieval approaches can be compared using:
+Different retrieval strategies can be compared:
 
 ```text
 Vector Search
       vs
 Hybrid Retrieval
       vs
-Hybrid + Reranking
+Hybrid Retrieval + Reranking
 ```
 
-Possible metrics include:
+Possible evaluation metrics include:
 
 * Recall@K
 * Precision@K
@@ -279,23 +291,13 @@ Possible metrics include:
 
 ---
 
-## Summary
-
-Enterprise Multi-Tenant RAG Gateway is a FastAPI-based RAG backend built around a **multi-stage retrieval architecture**.
+## Design Principles
 
 ```text
-Retrieve Broadly
-      ↓
-Combine Retrieval Signals
-      ↓
-Rank More Precisely
-      ↓
-Select Relevant Context
-      ↓
-Generate an Answer
-```
-
-The project focuses on retrieval quality, ranking, modularity, and reliability rather than simply connecting an LLM to a vector database.
-
-```
+1. Validate early
+2. Separate responsibilities
+3. Retrieve using multiple signals
+4. Use expensive models on smaller candidate sets
+5. Keep components replaceable
+6. Measure improvements rather than assuming them
 ```
