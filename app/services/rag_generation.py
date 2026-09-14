@@ -1,7 +1,7 @@
 import os
 import asyncio
 from dotenv import load_dotenv
-from groq import AsyncGroq
+from groq import AsyncGroq, RateLimitError, APIConnectionError
 
 load_dotenv()
 
@@ -33,13 +33,13 @@ Context :
           
           return response.choices[0].message.content
         
-        except AsyncGroq.RateLimitError as e:
+        except RateLimitError as e:
           last_error = e 
           wait_time = BASE_DELAY_SECONDS * (2**attempt)
           print(f"Rate limited. Retrying in {wait_time}s (attempt {attempt + 1}/{MAX_RETRIES})")
-          asyncio.sleep(wait_time)
+          await asyncio.sleep(wait_time)
         
-        except AsyncGroq.APIConnectionError as e:
+        except APIConnectionError as e:
           last_error = e
           print(f"Connection error. Retrying (attempt {attempt + 1}/{MAX_RETRIES})")
           await asyncio.sleep(BASE_DELAY_SECONDS)
